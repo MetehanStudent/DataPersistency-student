@@ -30,27 +30,39 @@
 -- S2.1. Vier-daagse cursussen
 --
 -- Geef code en omschrijving van alle cursussen die precies vier dagen duren.
--- DROP VIEW IF EXISTS s2_1; CREATE OR REPLACE VIEW s2_1 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s2_1; CREATE OR REPLACE VIEW s2_1 AS                                                     -- [TEST]
+SELECT code, omschrijving
+FROM cursussen
+WHERE lengte = 4;
 
 
 -- S2.2. Medewerkersoverzicht
 --
 -- Geef alle informatie van alle medewerkers, gesorteerd op functie,
 -- en per functie op leeftijd (van jong naar oud).
--- DROP VIEW IF EXISTS s2_2; CREATE OR REPLACE VIEW s2_2 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s2_2; CREATE OR REPLACE VIEW s2_2 AS                                                     -- [TEST]
+SELECT *
+FROM medewerkers
+ORDER BY functie, gbdatum DESC;
 
 
 -- S2.3. Door het land
 --
 -- Welke cursussen zijn in Utrecht en/of in Maastricht uitgevoerd? Geef
 -- code en begindatum.
--- DROP VIEW IF EXISTS s2_3; CREATE OR REPLACE VIEW s2_3 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s2_3; CREATE OR REPLACE VIEW s2_3 AS                                                     -- [TEST]
+SELECT cursus, begindatum
+FROM uitvoeringen
+WHERE locatie IN ('UTRECHT', 'MAASTRICHT');
 
 
 -- S2.4. Namen
 --
 -- Geef de naam en voorletters van alle medewerkers, behalve van R. Jansen.
--- DROP VIEW IF EXISTS s2_4; CREATE OR REPLACE VIEW s2_4 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s2_4; CREATE OR REPLACE VIEW s2_4 AS                                                     -- [TEST]
+SELECT naam, voorl
+FROM medewerkers
+WHERE NOT (naam = 'JANSEN' AND voorl = 'R');
 
 
 -- S2.5. Nieuwe SQL-cursus
@@ -60,11 +72,21 @@
 -- Voeg deze gegevens toe.                                                                                       -- [TEST]
 
 
+-- Nick Smit = SMIT N = mnr 7369. 'Komende 2 maart' = eerstvolgende 2 maart in de toekomst.
+INSERT INTO uitvoeringen (cursus, begindatum, docent, locatie)
+VALUES ('S02', '2027-03-02', 7369, 'LEERDAM');
+
+
 -- S2.6. Stagiairs
 --
 -- Neem één van je collega-studenten aan als stagiair ('STAGIAIR') en
 -- voer zijn of haar gegevens in. Kies een personeelnummer boven de 8000.
                                                                                         -- [TEST]
+
+
+-- Stagiair met mnr boven 8000 (afd valt op default 10).
+INSERT INTO medewerkers (mnr, naam, voorl, functie, chef, gbdatum, maandsal)
+VALUES (8010, 'JANSSEN', 'K', 'STAGIAIR', 7839, '2002-05-14', 700);
 
 
 -- S2.7. Nieuwe schaal
@@ -74,6 +96,11 @@
                                                                                        -- [TEST]
 
 
+-- Zesde schaal voor salarissen 3001-4000 met toelage 500.
+INSERT INTO schalen (snr, ondergrens, bovengrens, toelage)
+VALUES (6, 3001, 4000, 500);
+
+
 -- S2.8. Nieuwe cursus
 --
 -- Er wordt een nieuwe 6-daagse cursus 'Data & Persistency' in het programma opgenomen.
@@ -81,11 +108,34 @@
 -- mensen in.                                                                                      -- [TEST]
 
 
+-- Nieuwe 6-daagse cursus D&P, twee uitvoeringen in Leerdam, drie inschrijvingen.
+INSERT INTO cursussen (code, omschrijving, type, lengte)
+VALUES ('D&P', 'Data & Persistency', 'BLD', 6);
+
+INSERT INTO uitvoeringen (cursus, begindatum, docent, locatie)
+VALUES ('D&P', '2027-01-10', 7788, 'LEERDAM'),
+       ('D&P', '2027-03-10', 7788, 'LEERDAM');
+
+INSERT INTO inschrijvingen (cursist, cursus, begindatum)
+VALUES (7369, 'D&P', '2027-01-10'),
+       (7499, 'D&P', '2027-01-10'),
+       (7521, 'D&P', '2027-01-10');
+
+
 -- S2.9. Salarisverhoging
 --
 -- De medewerkers van de afdeling VERKOOP krijgen een salarisverhoging
 -- van 5.5%, behalve de manager van de afdeling, deze krijgt namelijk meer: 7%.
 -- Voer deze verhogingen door.
+
+
+-- Manager (hoofd) van VERKOOP krijgt 7%, de rest van afdeling 30 krijgt 5.5%.
+UPDATE medewerkers SET maandsal = maandsal * 1.07
+WHERE mnr = (SELECT hoofd FROM afdelingen WHERE naam = 'VERKOOP');
+
+UPDATE medewerkers SET maandsal = maandsal * 1.055
+WHERE afd = 30
+  AND mnr <> (SELECT hoofd FROM afdelingen WHERE naam = 'VERKOOP');
 
 
 -- S2.10. Concurrent
@@ -97,12 +147,35 @@
 -- Waarom lukt dit (niet)?
 
 
+-- Martens (mnr 7654) verwijderen LUKT: hij wordt nergens als verplichte foreign key
+-- gebruikt. Zijn historie verdwijnt mee dankzij ON DELETE CASCADE op tabel historie.
+DELETE FROM medewerkers WHERE mnr = 7654;
+
+-- Alders (mnr 7499) verwijderen LUKT NIET: hij komt voor als cursist in inschrijvingen.
+-- De foreign key i_cursist_fk verwijst naar medewerkers zonder ON DELETE CASCADE, dus
+-- PostgreSQL blokkeert de delete met:
+--   ERROR: update or delete on table "medewerkers" violates foreign key constraint
+--          "i_cursist_fk" on table "inschrijvingen"
+DELETE FROM medewerkers WHERE mnr = 7499;
+
+
 -- S2.11. Nieuwe afdeling
 --
 -- Je wordt hoofd van de nieuwe afdeling 'FINANCIEN' te Leerdam,
 -- onder de hoede van De Koning. Kies een personeelnummer boven de 8000.
 -- Zorg voor de juiste invoer van deze gegevens.
                                                                                       -- [TEST]
+
+
+
+-- Nieuwe afdeling FINANCIEN (anr veelvoud van 10), daarna mezelf als medewerker
+-- en hoofd. Onder de hoede van De Koning (mnr 7839) -> chef = 7839.
+INSERT INTO afdelingen (anr, naam, locatie) VALUES (50, 'FINANCIEN', 'LEERDAM');
+
+INSERT INTO medewerkers (mnr, naam, voorl, functie, chef, gbdatum, maandsal, afd)
+VALUES (8011, 'EHSANULLAH', 'M', 'MANAGER', 7839, '2000-01-01', 3000, 50);
+
+UPDATE afdelingen SET hoofd = 8011 WHERE anr = 50;
 
 
 

@@ -29,24 +29,41 @@
 -- S4.1. 
 -- Geef nummer, functie en geboortedatum van alle medewerkers die vóór 1980
 -- geboren zijn, en trainer of verkoper zijn.
--- DROP VIEW IF EXISTS s4_1; CREATE OR REPLACE VIEW s4_1 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_1; CREATE OR REPLACE VIEW s4_1 AS                                                     -- [TEST]
+SELECT mnr, functie, gbdatum
+FROM medewerkers
+WHERE gbdatum < '1980-01-01'
+  AND functie IN ('TRAINER', 'VERKOPER');
 
 
 -- S4.2. 
 -- Geef de naam van de medewerkers met een tussenvoegsel (b.v. 'van der').
--- DROP VIEW IF EXISTS s4_2; CREATE OR REPLACE VIEW s4_2 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_2; CREATE OR REPLACE VIEW s4_2 AS                                                     -- [TEST]
+-- Een tussenvoegsel betekent een spatie in de naam.
+SELECT naam
+FROM medewerkers
+WHERE naam LIKE '% %';
 
 
 -- S4.3. 
 -- Geef nu code, begindatum en aantal inschrijvingen (`aantal_inschrijvingen`) van alle
 -- cursusuitvoeringen in 2019 met minstens drie inschrijvingen.
--- DROP VIEW IF EXISTS s4_3; CREATE OR REPLACE VIEW s4_3 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_3; CREATE OR REPLACE VIEW s4_3 AS                                                     -- [TEST]
+SELECT i.cursus, i.begindatum, COUNT(*) AS aantal_inschrijvingen
+FROM inschrijvingen i
+WHERE EXTRACT(YEAR FROM i.begindatum) = 2019
+GROUP BY i.cursus, i.begindatum
+HAVING COUNT(*) >= 3;
 
 
 -- S4.4. 
 -- Welke medewerkers hebben een bepaalde cursus meer dan één keer gevolgd?
 -- Geef medewerkernummer en cursuscode.
--- DROP VIEW IF EXISTS s4_4; CREATE OR REPLACE VIEW s4_4 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_4; CREATE OR REPLACE VIEW s4_4 AS                                                     -- [TEST]
+SELECT cursist, cursus
+FROM inschrijvingen
+GROUP BY cursist, cursus
+HAVING COUNT(*) > 1;
 
 
 -- S4.5. 
@@ -57,8 +74,11 @@
 --  --------+-----------
 --   ERM    | 1 
 --   JAV    | 4 
---   OAG    | 2 
--- DROP VIEW IF EXISTS s4_5; CREATE OR REPLACE VIEW s4_5 AS                                                     -- [TEST]
+--   OAG    | 2
+DROP VIEW IF EXISTS s4_5; CREATE OR REPLACE VIEW s4_5 AS                                                     -- [TEST]
+SELECT cursus, COUNT(*) AS aantal
+FROM uitvoeringen
+GROUP BY cursus;
 
 
 -- S4.6. 
@@ -66,7 +86,10 @@
 -- jongste medewerker (`verschil`) en bepaal de gemiddelde leeftijd van
 -- de medewerkers (`gemiddeld`).
 -- Je mag hierbij aannemen dat elk jaar 365 dagen heeft.
--- DROP VIEW IF EXISTS s4_6; CREATE OR REPLACE VIEW s4_6 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_6; CREATE OR REPLACE VIEW s4_6 AS                                                     -- [TEST]
+SELECT (MAX(gbdatum) - MIN(gbdatum)) / 365            AS verschil,
+       AVG((CURRENT_DATE - gbdatum) / 365.0)          AS gemiddeld
+FROM medewerkers;
 
 
 -- S4.7. 
@@ -74,7 +97,13 @@
 -- er werkt (`aantal_medewerkers`), de gemiddelde commissie die ze
 -- krijgen (`commissie_medewerkers`), en hoeveel dat gemiddeld
 -- per verkoper is (`commissie_verkopers`).
--- DROP VIEW IF EXISTS s4_7; CREATE OR REPLACE VIEW s4_7 AS                                                     -- [TEST]
+DROP VIEW IF EXISTS s4_7; CREATE OR REPLACE VIEW s4_7 AS                                                     -- [TEST]
+-- commissie_medewerkers: totale commissie gedeeld door ALLE medewerkers (NULL telt als 0).
+-- commissie_verkopers: gemiddelde commissie van wie commissie heeft (= de verkopers).
+SELECT COUNT(*)                AS aantal_medewerkers,
+       SUM(comm) / COUNT(*)    AS commissie_medewerkers,
+       AVG(comm)               AS commissie_verkopers
+FROM medewerkers;
 
 
 
